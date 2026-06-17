@@ -799,6 +799,7 @@ function _setupRowTriggers(){
     var h=el.getBoundingClientRect().height||180;var vh=window.innerHeight;
     var mult=(vh/(Math.floor(h)+20))*(1-baseProgress);
     gsap.set(el,{"--progress":baseProgress,"--base-height":h+"px"});el.style.setProperty("min-height",h+"px");
+    if(_isMobile){gsap.set(el,{"--progress":1.45});return;}// mobile: static photos, no scroll-driven resize
     ScrollTrigger.create({trigger:el,start:"bottom-="+(h-(i===0?42:0))+"px bottom",end:"top top",scrub:1,
       onUpdate:function(s){gsap.set(el,{"--progress":baseProgress+mult*s.progress})}});
   });
@@ -1216,7 +1217,7 @@ animate();
   border-bottom: 1px solid rgba(0,0,0,0.08);
 }
 /* Light theme toggle text */
-@media (max-width: 63.99em) { .theme-toggle { left: auto; right: 20px; bottom: 15px; } }
+@media (max-width: 63.99em) { .theme-toggle { left: auto; right: 20px; bottom: 13px; font-size: 11px; letter-spacing: 0; } }
 [data-theme="light"] .theme-toggle { color: #000; }
 [data-theme="dark"] .theme-toggle,
 :root:not([data-theme="light"]) .theme-toggle { color: #fff; }
