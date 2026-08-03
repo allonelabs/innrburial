@@ -1,0 +1,6 @@
+.git
+node_modules
+videos/_orig
+index.html.bak-*
+*_original.glb
+models/figure_backup.glb

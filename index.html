@@ -774,7 +774,11 @@ footer#contact.page_homeSection__TYpWm {
 <script>
 const lenis=new Lenis({duration:0.8,easing:t=>Math.min(1,1.001-Math.pow(2,-10*t)),smoothWheel:true,syncTouch:false,wheelMultiplier:1,touchMultiplier:1.2});
 gsap.registerPlugin(ScrollTrigger);
-lenis.on("scroll",ScrollTrigger.update);gsap.ticker.add(t=>lenis.raf(t*1000));gsap.ticker.lagSmoothing(0);
+lenis.on("scroll",ScrollTrigger.update);
+// Drive Lenis from its own rAF loop: driving it from gsap.ticker froze all
+// scrolling whenever the ticker stalled/slept (wheel eaten, page stuck).
+requestAnimationFrame(function _lenisRaf(t){lenis.raf(t);requestAnimationFrame(_lenisRaf);});
+gsap.ticker.lagSmoothing(0);
 // Force scroll to top on every page load/refresh
 lenis.scrollTo(0,{immediate:true});window.scrollTo(0,0);
 window.addEventListener("load",()=>{lenis.scrollTo(0,{immediate:true});window.scrollTo(0,0);setTimeout(()=>{lenis.scrollTo(0,{immediate:true});window.scrollTo(0,0);ScrollTrigger.refresh();},50);});
@@ -791,8 +795,8 @@ gsap.to(el,{scaleX:1,duration:1.2,delay:0.2,ease:"expo.out"});})();
 document.querySelectorAll('[class*="cover"],[class*="Cover"],[class*="overlay"],[class*="Overlay"]').forEach(el=>{if(el.style)el.style.display="none"});
 // Scroll-driven (1 elements) — matches ingamana.com original config
 ScrollTrigger.config({ignoreMobileResize:true});
-var _isMobile=window.innerWidth<1024;
 function _setupRowTriggers(){
+  var _isMobile=window.innerWidth<1024;
   ScrollTrigger.getAll().forEach(function(t){
     if (t.vars && t.vars.trigger && t.vars.trigger.classList && t.vars.trigger.classList.contains("Row_row__I_fKs")) {
       t.kill();
@@ -814,10 +818,15 @@ _setupRowTriggers();
 window.addEventListener("load",function(){ setTimeout(_setupRowTriggers, 200); setTimeout(_setupRowTriggers, 1000); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ setTimeout(_setupRowTriggers, 50); });
 // (removed focus/visibilitychange re-setup: it reset --progress mid-scroll and broke the reveal)
-window.addEventListener("resize",function(){ clearTimeout(window._rwT); window._rwT = setTimeout(_setupRowTriggers, 150); });
+var _rwT,_rwL,_lastW=window.innerWidth;
+window.addEventListener("resize",function(){
+  if(window.innerWidth===_lastW)return;// height-only resize (mobile URL bar): keep triggers
+  _lastW=window.innerWidth;
+  clearTimeout(_rwT);_rwT=setTimeout(_setupRowTriggers,150);
+});
 // Image-load watchdog: when any img inside a row finishes loading, rebuild
 document.querySelectorAll(".Row_row__I_fKs img").forEach(function(img){
-  if (!img.complete) img.addEventListener("load", function(){ clearTimeout(window._rwL); window._rwL = setTimeout(_setupRowTriggers, 100); }, { once: true });
+  if (!img.complete) img.addEventListener("load", function(){ clearTimeout(_rwL); _rwL = setTimeout(_setupRowTriggers, 100); }, { once: true });
 });
 // Character stagger (1 patterns)
 document.querySelectorAll(".InflatingText_container__N6D4c").forEach(c=>{
@@ -830,14 +839,7 @@ document.querySelectorAll(".InflatingText_container__N6D4c").forEach(c=>{
   obs.observe(c);
 });
 // Card stagger (2 grids)
-document.querySelectorAll(".Row_prev__XuuKD").forEach(w=>{
-  const els=w.querySelectorAll(".Element_element__k08ik");if(els.length<2)return;if(window.innerWidth<1024)return;
-  gsap.set(els,{x:-25,opacity:0});
-  ScrollTrigger.create({trigger:w,start:"top 80%",once:true,onEnter:()=>{
-    els.forEach((el,i)=>{gsap.to(el,{x:0,opacity:1,duration:0.8,delay:i*0.1,ease:"expo.out",clearProps:"transform"})});
-  }});
-});
-document.querySelectorAll(".Row_next__wA2PK").forEach(w=>{
+document.querySelectorAll(".Row_prev__XuuKD, .Row_next__wA2PK").forEach(w=>{
   const els=w.querySelectorAll(".Element_element__k08ik");if(els.length<2)return;if(window.innerWidth<1024)return;
   gsap.set(els,{x:-25,opacity:0});
   ScrollTrigger.create({trigger:w,start:"top 80%",once:true,onEnter:()=>{
