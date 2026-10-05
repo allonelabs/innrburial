@@ -797,21 +797,31 @@ document.querySelectorAll('[class*="cover"],[class*="Cover"],[class*="overlay"],
 ScrollTrigger.config({ignoreMobileResize:true});
 function _setupRowTriggers(){
   var _isMobile=window.innerWidth<1024;
+  // as ingamana: measure one card in the hidden full-size row — an animated row grows mid-scroll and would poison the measurement
+  var _card=document.querySelector(".fake-projects-row .Element_element__k08ik");var _cardH=_card?_card.getBoundingClientRect().height:0;
+  // same card + same width = same triggers; rebuilding anyway (image loads, load timers) reset every row mid-scroll and jumped the page
+  var _key=_cardH+"|"+window.innerWidth;if(_key===_setupRowTriggers.key)return;_setupRowTriggers.key=_key;
   ScrollTrigger.getAll().forEach(function(t){
     if (t.vars && t.vars.trigger && t.vars.trigger.classList && t.vars.trigger.classList.contains("Row_row__I_fKs")) {
       t.kill();
     }
   });
-  var baseProgress=_isMobile?0.6:0.5;
-  document.querySelectorAll(".Row_row__I_fKs").forEach(function(el,i){
-    var h=el.getBoundingClientRect().height||180;var vh=window.innerHeight;
+  var baseProgress=_isMobile?0.6:0.5;var _rowT=[];
+  // ingamana desktop curve: linear up to full size, then squared (photos accelerate as they rise), capped at mult
+  function _rowProg(mult,p){var x=baseProgress+mult*p;return x*Math.min(Math.max(1,x),mult)}
+  document.querySelectorAll(".Row_row__I_fKs").forEach(function(el){
+    if(el.classList.contains("fake-projects-row"))return;// the measuring row stays at --progress:1, as on ingamana
+    var h=_cardH||el.getBoundingClientRect().height||180;var vh=window.innerHeight;
     var mult=(vh/(Math.floor(h)+20))*(1-baseProgress);
+    if(el.classList.contains("Row_invisible__Rku6N"))mult*=0.5;// last pushing row is halved on ingamana
     gsap.set(el,{"--progress":baseProgress,"--base-height":h+"px"});el.style.setProperty("min-height",h+"px");
     if(_isMobile){gsap.set(el,{"--progress":0.8});return;}// mobile: static photos, no scroll-driven resize
-    ScrollTrigger.create({trigger:el,start:"bottom-="+(h-(i===0?42:0))+"px bottom",end:"top top",scrub:1,
-      onUpdate:function(s){gsap.set(el,{"--progress":baseProgress+mult*s.progress})}});
+    _rowT.push([el,mult,ScrollTrigger.create({trigger:el,start:"bottom-="+h+"px bottom",end:"top top",scrub:1,
+      onUpdate:function(s){gsap.set(el,{"--progress":_rowProg(mult,s.progress)})}})]);
   });
   if (window.ScrollTrigger) ScrollTrigger.refresh();
+  // restore each row to its current scroll position so a rebuild mid-scroll does not jump
+  _rowT.forEach(function(r){gsap.set(r[0],{"--progress":_rowProg(r[1],r[2].progress)})});
 }
 _setupRowTriggers();
 // Re-create triggers whenever the page layout might have changed
